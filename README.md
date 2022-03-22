@@ -10,7 +10,7 @@ python3 test.py --gpu_ids 0 --test_dataroot ./samples --output_dir ./output/your
 The results are saved in `./output/your_root/output.txt`.
 
 ## Results
-### Images with top 100 scores
+### Images with the highest attractiveness scores
 ![Untitled](./attractiveness/assets/top.jpg)
-### Images with top 100 scores
+### Images with the lowest attractiveness scores
 ![Untitled](./attractiveness/assets/bottom.jpg)
