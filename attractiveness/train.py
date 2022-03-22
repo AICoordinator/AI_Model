@@ -6,6 +6,7 @@ from tensorboardX import SummaryWriter
 from torchvision import transforms
 from networks import RegressionNetwork
 import argparse
+from torchvision.utils import save_image
 import os
 
 def get_opt():
@@ -70,6 +71,7 @@ def train(model, train_loader, test_loader, opt):
         label = label.cuda()
         # Forward pass
         outputs = model(image)
+        assert outputs.shape == label.shape
         loss = criterion(outputs, label)
         # Backward and optimize
         optimizer.zero_grad()

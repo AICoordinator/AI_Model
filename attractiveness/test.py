@@ -1,3 +1,4 @@
+# python3 test.py --gpu_ids 0 --test_dataroot dir/to/images 
 import torchvision
 from torch import nn
 import torch
@@ -7,6 +8,13 @@ from torchvision import transforms
 from networks import RegressionNetwork
 import argparse
 import os
+import torch.nn.functional as F
+from PIL import Image
+import torchvision.transforms.functional as TF
+# Grad-CAM
+from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+from pytorch_grad_cam.utils.image import show_cam_on_image
 
 def get_opt():
     parser = argparse.ArgumentParser()
@@ -33,16 +41,57 @@ def test(model, test_loader, opt):
     # Check folder
     if not os.path.exists(opt.output_dir):
         os.mkdir(opt.output_dir)
-
+        os.mkdir(os.path.join(opt.output_dir, "saliency"))
+        os.mkdir(os.path.join(opt.output_dir, "gradcam"))
+        os.mkdir(os.path.join(opt.output_dir, "gradcam-rgb"))
+        
+        
+    
+    # Grad-CAM
+    target_layers = [model.resnet.layer4[-1]]
+    cam = GradCAM(model=model, target_layers=target_layers, use_cuda=True)
+    targets = [ClassifierOutputTarget(0)]
     for i, (image, _, path) in enumerate(test_loader):
         image = image.cuda()
+        image.requires_grad_()
 
-        with torch.no_grad():
-            output = model(image)
-            output = output.cpu().numpy()
+        output = model(image)
         with open(os.path.join(opt.output_dir, "output.txt"), "a") as f:
             for j in range(len(output)):
                 f.write(os.path.basename(path[j]) + " " + str(output[j].item()) + "\n")
+        output_sum = torch.sum(output)
+        output_sum.backward()
+        # Visualize the saliency map
+        for j in range(len(output)):
+            saliency = torch.sum(image.grad[j].abs(), dim=0)
+            saliency = F.relu(saliency)
+            saliency = saliency/saliency.max()
+            # Save the saliency map
+            saliency = saliency.cpu().detach().numpy() * 255
+            saliency = Image.fromarray(saliency)
+            # Convert to L
+            saliency = saliency.convert('L')
+
+            # saliency = saliency * image[j]
+            # saliency = torchvision.transforms.ToPILImage()((saliency * 0.5 + 0.5) * 255)
+            
+            saliency.save(os.path.join(opt.output_dir, "saliency", os.path.basename(path[j])))
+        # Visualize the Grad-CAM
+        grayscale_cam = cam(input_tensor=image, targets=targets)
+        print("Min/max/mean of grayscale_cam", grayscale_cam.min(), grayscale_cam.max(), grayscale_cam.mean())
+        for j in range(len(output)):
+            img = (image[j]*0.5+0.5).detach().cpu().numpy().transpose(1,2,0)
+            visualization = show_cam_on_image(img, grayscale_cam[j], use_rgb=True)
+            # Save the Grad-CAM
+            visualization = Image.fromarray(visualization)
+            visualization.save(os.path.join(opt.output_dir, "gradcam-rgb", os.path.basename(path[j]))) 
+
+            visualization = Image.fromarray(grayscale_cam[j]).convert('L')
+            visualization.save(os.path.join(opt.output_dir, "gradcam", os.path.basename(path[j])))
+    
+        print(i)
+
+
     
 if __name__ == '__main__':
     opt = get_opt()
