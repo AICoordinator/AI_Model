@@ -10,7 +10,7 @@ class RegressionNetwork(nn.Module):
         resnet = torchvision.models.resnet18(pretrained=True)
         resnet.fc = nn.Linear(resnet.fc.in_features, 1)
         self.resnet = resnet
-    def forward(self, x):
+    def forward(self, x, feat = False):
         x = self.resnet(x)
         # x = F.sigmoid(x) * 5 # scale the output to be between 0 and 5
         return x.squeeze()

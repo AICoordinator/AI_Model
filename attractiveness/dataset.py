@@ -41,9 +41,9 @@ class ImageDatasetTest(torch.utils.data.Dataset):
     def __init__(self, data_dir):
         self.data_dir = data_dir
         
-        self.transform = transforms.Compose([transforms.ToTensor(),
+        self.transform = transforms.Compose([transforms.Resize((256, 256)), transforms.CenterCrop(224), transforms.ToTensor(),
                         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-                                                                                    ])
+                                                                                  ])
         self.image_paths = []
         
 
@@ -59,7 +59,6 @@ class ImageDatasetTest(torch.utils.data.Dataset):
         image_path = self.image_paths[index]
         image = Image.open(image_path)
         image = self.transform(image)
-        label = self.labels[os.path.basename(image_path)]
         return image, image_path
     def __len__(self):
         return len(self.image_paths)

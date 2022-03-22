@@ -1,10 +1,6 @@
-# python3 test.py --gpu_ids 0 --test_dataroot dir/to/images 
-import torchvision
-from torch import nn
+# python3 test.py --gpu_ids 0 --test_dataroot ./samples --ckpt ./checkpoints/8000.pth
 import torch
-from dataset import ImageDataset
-from tensorboardX import SummaryWriter
-from torchvision import transforms
+from dataset import ImageDatasetTest
 from networks import RegressionNetwork
 import argparse
 import os
@@ -12,10 +8,10 @@ import torch.nn.functional as F
 from PIL import Image
 import torchvision.transforms.functional as TF
 # Grad-CAM
-from pytorch_grad_cam import GradCAM
-from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
-from pytorch_grad_cam.utils.image import show_cam_on_image
-
+# from pytorch_grad_cam import GradCAM
+# from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+# from pytorch_grad_cam.utils.image import show_cam_on_image
+import numpy as np
 def get_opt():
     parser = argparse.ArgumentParser()
 
@@ -24,7 +20,6 @@ def get_opt():
     parser.add_argument('-j', '--workers', type=int, default=4)
     parser.add_argument('-b', '--batch-size', type=int, default=8)
     parser.add_argument("--test_dataroot", default="/home/sangyunlee/dataset/SCUT-FBP5500_v2/Images")
-    parser.add_argument("--test_label_dir", default="/home/sangyunlee/dataset/SCUT-FBP5500_v2/train_test_files/split_of_60%training and 40%testing/test.txt")
 
     parser.add_argument('--ckpt', type=str, help='save checkpoint infos')
   
@@ -49,9 +44,9 @@ def test(model, test_loader, opt):
     
     # Grad-CAM
     target_layers = [model.resnet.layer4[-1]]
-    cam = GradCAM(model=model, target_layers=target_layers, use_cuda=True)
-    targets = [ClassifierOutputTarget(0)]
-    for i, (image, _, path) in enumerate(test_loader):
+    # cam = GradCAM(model=model, target_layers=target_layers, use_cuda=True)
+    # targets = [ClassifierOutputTarget(0)]
+    for i, (image, path) in enumerate(test_loader):
         image = image.cuda()
         image.requires_grad_()
 
@@ -77,17 +72,16 @@ def test(model, test_loader, opt):
             
             saliency.save(os.path.join(opt.output_dir, "saliency", os.path.basename(path[j])))
         # Visualize the Grad-CAM
-        grayscale_cam = cam(input_tensor=image, targets=targets)
-        print("Min/max/mean of grayscale_cam", grayscale_cam.min(), grayscale_cam.max(), grayscale_cam.mean())
-        for j in range(len(output)):
-            img = (image[j]*0.5+0.5).detach().cpu().numpy().transpose(1,2,0)
-            visualization = show_cam_on_image(img, grayscale_cam[j], use_rgb=True)
-            # Save the Grad-CAM
-            visualization = Image.fromarray(visualization)
-            visualization.save(os.path.join(opt.output_dir, "gradcam-rgb", os.path.basename(path[j]))) 
-
-            visualization = Image.fromarray(grayscale_cam[j]).convert('L')
-            visualization.save(os.path.join(opt.output_dir, "gradcam", os.path.basename(path[j])))
+        # grayscale_cam = cam(input_tensor=image, targets=targets, aug_smooth=True)
+        # print("Min/max/mean of grayscale_cam", grayscale_cam.min(), grayscale_cam.max(), grayscale_cam.mean())
+        # for j in range(len(output)):
+        #     img = (image[j]*0.5+0.5).detach().cpu().numpy().transpose(1,2,0)
+        #     visualization = show_cam_on_image(img, grayscale_cam[j], use_rgb=True)
+        #     # Save the Grad-CAM
+        #     visualization = Image.fromarray(visualization)
+        #     visualization.save(os.path.join(opt.output_dir, "gradcam-rgb", os.path.basename(path[j]))) 
+        #     visualization = Image.fromarray(grayscale_cam[j]*255).convert('L')
+        #     visualization.save(os.path.join(opt.output_dir, "gradcam", os.path.basename(path[j])))
     
         print(i)
 
@@ -101,7 +95,7 @@ if __name__ == '__main__':
     # Load checkpoint
     model.load_state_dict(torch.load(opt.ckpt))
     # Define dataloader
-    test_dataset = ImageDataset(data_dir=opt.test_dataroot, label_dir=opt.test_label_dir)
+    test_dataset = ImageDatasetTest(data_dir=opt.test_dataroot)
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=opt.batch_size, shuffle=False)
     # Train the model
     test(model, test_loader, opt)
