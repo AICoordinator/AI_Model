@@ -34,6 +34,8 @@ def test(model, test_loader, opt):
     model.eval()
     model.cuda()
     # Check folder
+    if not os.path.exists("./output"):
+        os.mkdir("./output")
     if not os.path.exists(opt.output_dir):
         os.mkdir(opt.output_dir)
         os.mkdir(os.path.join(opt.output_dir, "saliency"))
