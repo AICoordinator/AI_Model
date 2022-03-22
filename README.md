@@ -8,3 +8,9 @@ python3 test.py --gpu_ids 0 --test_dataroot ./samples --output_dir ./output/your
 ```
 
 The results are saved in `./output/your_root/output.txt`.
+
+## Results
+### Images with top 100 scores
+![Untitled](./attractiveness/assets/top.jpg)
+### Images with top 100 scores
+![Untitled](./attractiveness/assets/bottom.jpg)
