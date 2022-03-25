@@ -4,7 +4,7 @@ import torch
 from dataset import ImageDataset
 from tensorboardX import SummaryWriter
 from torchvision import transforms
-from networks import RegressionNetwork
+from networks import ResNet18
 import argparse
 from torchvision.utils import save_image
 import os
@@ -28,7 +28,7 @@ def get_opt():
     parser.add_argument("--tensorboard_count", type=int, default=100)
     parser.add_argument("--display_count", type=int, default=100)
     parser.add_argument("--save_count", type=int, default=1000)
-    parser.add_argument("--load_step", type=int, default=0)
+    parser.add_argument("--ckpt", type=str, default="/home/sangyunlee/AI_Model/attractiveness/checkpoints/resnet18-5c106cde.pth")
     parser.add_argument("--max_iter", type=int, default=1000000)
     parser.add_argument("--val_count", type=int, default=100)
     parser.add_argument("--shuffle", action='store_true', help='shuffle input data')
@@ -71,7 +71,7 @@ def train(model, train_loader, test_loader, opt):
         label = label.cuda()
         # Forward pass
         outputs = model(image)
-        assert outputs.shape == label.shape
+        assert outputs.shape == label.shape, f"outputs.shape: {outputs.shape}, label.shape: {label.shape}"
         loss = criterion(outputs, label)
         # Backward and optimize
         optimizer.zero_grad()
@@ -131,7 +131,11 @@ if __name__ == '__main__':
     opt = get_opt()
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu_ids
     # Define model
-    model = RegressionNetwork()
+    model = ResNet18()
+    # Load checkpoint
+    if opt.ckpt:
+        model.load_state_dict(torch.load(opt.ckpt), strict=True)
+        
     # Define dataloader
     train_dataset = ImageDataset(data_dir=opt.dataroot, label_dir=opt.label_dir)
     test_dataset = ImageDataset(data_dir=opt.test_dataroot, label_dir=opt.test_label_dir)
