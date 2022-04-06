@@ -42,12 +42,16 @@ def test(model, test_loader, opt):
         os.mkdir(os.path.join(opt.output_dir, "cam-neg"))
         os.mkdir(os.path.join(opt.output_dir, "cam-rgb"))
         os.mkdir(os.path.join(opt.output_dir, "cam"))
+        os.mkdir(os.path.join(opt.output_dir, "gradcam-pos"))
+        os.mkdir(os.path.join(opt.output_dir, "gradcam-neg"))
+        os.mkdir(os.path.join(opt.output_dir, "gradcam"))
         
-    for i, (image, path) in enumerate(test_loader):
+    for i, (image, path, mask) in enumerate(test_loader):
         image = image.cuda()
         image.requires_grad_()
+        mask = mask.cuda()
 
-        output, feat = model(image, return_feat = True)
+        output, feat = model(image, mask)
         with open(os.path.join(opt.output_dir, "output.txt"), "a") as f:
             for j in range(len(output)):
                 f.write(os.path.basename(path[j]) + " " + str(output[j].item()) + "\n")
