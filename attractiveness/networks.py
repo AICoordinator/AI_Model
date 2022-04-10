@@ -249,10 +249,10 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[0])
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
                                        dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.conv1x1 = nn.Conv2d(512, 1, kernel_size=1, stride=1, padding=0, bias=True)
+        self.conv1x1 = nn.Conv2d(512 * 4, 1, kernel_size=1, stride=1, padding=0, bias=True)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
@@ -296,7 +296,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x, mask, return_feat = True):
+    def forward(self, x, mask, return_feat = False):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
@@ -307,24 +307,36 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        mask = F.interpolate(mask, size=x.size()[2:], mode='bilinear', align_corners=True)
-        x = x * mask
+        mask = F.interpolate(mask, size=x.size()[2:], mode='nearest')
+        
+        # feat-mask
+        # x = x * mask
+        # if return_feat:
+        #     feat = x
+        # x = self.conv1x1(x)
+        # x = self.avgpool(x)
+        # if return_feat:
+        #     return x.squeeze(), feat
+        # else:
+        #     return x.squeeze()
+        # feat-mask-exp
+        mask_bg = 1 - mask
+        x = self.conv1x1(x)
+        x = x - (mask_bg * 1e8)
+        
+        x = torch.exp(x*0.01)
         if return_feat:
             feat = x
-        # print("mask shape:", mask.shape)
-        
         x = self.avgpool(x)
-        # x = torch.flatten(x, 1)
-        # x = self.fc(x)
-        x = self.conv1x1(x)
+        x = 5 - x
 
         if return_feat:
             return x.squeeze(), feat
         else:
             return x.squeeze()
 
-    def forward(self, x, return_feat=False):
-        return self._forward_impl(x, return_feat)
+    # def forward(self, x, return_feat=False):
+    #     return self._forward_impl(x, return_feat)
 
 
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):
@@ -346,7 +358,17 @@ def ResNet18(pretrained=False, progress=True, **kwargs):
     """
     return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
+def resnext50_32x4d(pretrained: bool = False, progress: bool = True, **kwargs) -> ResNet:
+    r"""ResNeXt-50 32x4d model from
+    `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_.
 
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    kwargs["groups"] = 32
+    kwargs["width_per_group"] = 4
+    return _resnet("resnext50_32x4d", Bottleneck, [3, 4, 6, 3], pretrained, progress, **kwargs)
 
 class RegressionNetwork2(nn.Module):
     def __init__(self):

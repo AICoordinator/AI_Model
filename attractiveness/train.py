@@ -4,7 +4,7 @@ import torch
 from dataset import ImageDataset
 from tensorboardX import SummaryWriter
 from torchvision import transforms
-from networks import ResNet18
+from networks import ResNet18, resnext50_32x4d
 import argparse
 from torchvision.utils import save_image
 import os
@@ -148,7 +148,8 @@ if __name__ == '__main__':
     opt = get_opt()
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu_ids
     # Define model
-    model = ResNet18()
+    # model = ResNet18()
+    model = resnext50_32x4d()
     # Load checkpoint
     if opt.ckpt:
         model.load_state_dict(torch.load(opt.ckpt), strict=False)
