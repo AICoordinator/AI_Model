@@ -4,11 +4,14 @@ import torch
 from dataset import ImageDataset
 from tensorboardX import SummaryWriter
 from torchvision import transforms
-from networks import ResNet18, resnext50_32x4d
+from networks import ResNet18, resnext50_32x4d, BiSeNet
 import argparse
 from torchvision.utils import save_image
 import os
-
+import cv2
+import numpy as np
+import torch.nn.functional as F
+from utils import logit2mask, normalize
 def get_opt():
     parser = argparse.ArgumentParser()
 
@@ -30,6 +33,7 @@ def get_opt():
     parser.add_argument("--display_count", type=int, default=100)
     parser.add_argument("--save_count", type=int, default=1000)
     parser.add_argument("--ckpt", type=str, default="/home/sangyunlee/AI_Model/attractiveness/checkpoints/resnet18-5c106cde.pth")
+    parser.add_argument("--ckpt_mask", type=str, default="/home/sangyunlee/face-parsing.PyTorch/res/cp/79999_iter.pth")
     parser.add_argument("--max_iter", type=int, default=400000)
     parser.add_argument("--val_count", type=int, default=1000)
     parser.add_argument("--shuffle", action='store_true', help='shuffle input data')
@@ -46,10 +50,11 @@ def get_opt():
 
 def visualize(test_iter, model):
     image, label = test_iter.next()
-
 def train(model, train_loader, test_loader, opt):
     model.train()
     model.cuda()
+    # model_mask.eval()
+    # model_mask.cuda()
 
     # Check path
     if not os.path.exists(os.path.join(opt.checkpoint_dir, opt.name)):
@@ -74,10 +79,21 @@ def train(model, train_loader, test_loader, opt):
         image = image.cuda()
         label = label.cuda()
         mask = mask.cuda()
+        
+        # Get segmap
+        # with torch.no_grad():
+        #     segmap = model_mask(image)[0]
+       
+            
+        # raise NotImplementedError
         # Forward pass
-        outputs = model(image, mask)
+
+        outputs, feat = model(image)
+        mask = F.interpolate(mask, size=feat.size()[2:], mode='nearest')
+        mask_bg = 1 - mask
+        reg = torch.sum(mask_bg * feat)
         assert outputs.shape == label.shape, f"outputs.shape: {outputs.shape}, label.shape: {label.shape}"
-        loss = criterion(outputs, label)
+        loss = criterion(outputs, label) + reg * 0.01
         # Backward and optimize
         optimizer.zero_grad()
         loss.backward()
@@ -86,6 +102,9 @@ def train(model, train_loader, test_loader, opt):
         if step % 100 == 0:
             print('Step: {}\tLoss: {:.6f}'.format(step, loss.item()))
             board.add_scalar('Loss/train', loss.item(), step + 1)
+            board.add_scalar('Loss/reg', reg.item(), step + 1)
+            board.add_image("feature", normalize(feat[0]), step + 1)
+            board.add_image("mask", mask_bg[0], step + 1)
 
         # Validation
         if step % opt.val_count == 0:
@@ -96,7 +115,9 @@ def train(model, train_loader, test_loader, opt):
                     image = image.cuda()
                     label = label.cuda()
                     mask = mask.cuda()
-                    outputs = model(image, mask)
+                    # with torch.no_grad():
+                    #     segmap = model_mask(image)[0]
+                    outputs, _ = model(image)
                 
                     val_loss = criterion(outputs, label)
 
@@ -148,17 +169,19 @@ if __name__ == '__main__':
     opt = get_opt()
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu_ids
     # Define model
-    # model = ResNet18()
-    model = resnext50_32x4d()
+    model = ResNet18()
+    # model_mask = BiSeNet(n_classes=19)
+
+    # model = resnext50_32x4d()
     # Load checkpoint
     if opt.ckpt:
         model.load_state_dict(torch.load(opt.ckpt), strict=False)
-        
+    # model_mask.load_state_dict(torch.load(opt.ckpt_mask), strict=False)
     # Define dataloader
     transform_train = [  # transforms.RandomRotation(degrees=(0, 180)),
                                             transforms.RandomHorizontalFlip(),
                                             transforms.Resize((256, 256)), 
-                                            transforms.RandomCrop(224), 
+                                            #transforms.RandomCrop(224), 
                                             transforms.ToTensor(),
                                             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
                                                                                   ]

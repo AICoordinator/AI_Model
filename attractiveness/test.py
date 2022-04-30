@@ -37,22 +37,15 @@ def test(model, test_loader, opt):
         os.mkdir("./output")
     if not os.path.exists(opt.output_dir):
         os.mkdir(opt.output_dir)
-        os.mkdir(os.path.join(opt.output_dir, "saliency"))
-        # os.mkdir(os.path.join(opt.output_dir, "gradcam"))
-        os.mkdir(os.path.join(opt.output_dir, "cam-pos"))
-        os.mkdir(os.path.join(opt.output_dir, "cam-neg"))
-        os.mkdir(os.path.join(opt.output_dir, "cam-rgb"))
-        os.mkdir(os.path.join(opt.output_dir, "cam"))
-        os.mkdir(os.path.join(opt.output_dir, "gradcam-pos"))
-        os.mkdir(os.path.join(opt.output_dir, "gradcam-neg"))
-        os.mkdir(os.path.join(opt.output_dir, "gradcam"))
+        os.mkdir(os.path.join(opt.output_dir, "neg_map"))
+        os.mkdir(os.path.join(opt.output_dir, "grad_top"))
+        os.mkdir(os.path.join(opt.output_dir, "grad_bot"))
 
-    for i, (image, path, mask) in enumerate(test_loader):
+    for i, (image, path) in enumerate(test_loader):
         image = image.cuda()
         image.requires_grad_()
-        mask = mask.cuda()
 
-        output, feat = model(image, mask, return_feat=True)
+        output, feat = model(image, return_feat=True)
         with open(os.path.join(opt.output_dir, "output.txt"), "a") as f:
             for j in range(len(output)):
                 f.write(os.path.basename(path[j]) + " " + str(output[j].item()) + "\n")
@@ -60,65 +53,65 @@ def test(model, test_loader, opt):
         feat.retain_grad()
         output_sum.backward()
         # Visualize the saliency map
-        for j in range(len(output)):
-            saliency = torch.sum(image.grad[j].abs(), dim=0)
-            saliency = F.relu(saliency)
-            saliency = saliency/saliency.max()
-            # Save the saliency map
-            saliency = saliency.cpu().detach().numpy() * 255
-            saliency = Image.fromarray(saliency)
-            # Convert to L
-            saliency = saliency.convert('L')
+        # for j in range(len(output)):
+        #     saliency = torch.sum(image.grad[j].abs(), dim=0)
+        #     saliency = F.relu(saliency)
+        #     saliency = saliency/saliency.max()
+        #     # Save the saliency map
+        #     saliency = saliency.cpu().detach().numpy() * 255
+        #     saliency = Image.fromarray(saliency)
+        #     # Convert to L
+        #     saliency = saliency.convert('L')
 
-            # saliency = saliency * image[j]
-            # saliency = torchvision.transforms.ToPILImage()((saliency * 0.5 + 0.5) * 255)
+        #     # saliency = saliency * image[j]
+        #     # saliency = torchvision.transforms.ToPILImage()((saliency * 0.5 + 0.5) * 255)
             
-            saliency.save(os.path.join(opt.output_dir, "saliency", os.path.basename(path[j])))
-        # Visualize the Class Activation Map
-        weighted_feat = feat #model.conv1x1(feat)
-        cams = torch.sum(weighted_feat, dim=1, keepdim=True)
-        cams_pos = F.relu(cams)
-        cams_neg = F.relu(-cams)
-        # print("cams.shape", cams.shape)
-        cams = F.interpolate(cams, size=image.shape[2:], mode='bilinear', align_corners=True).squeeze()
-        cams_pos = F.interpolate(cams_pos, size=image.shape[2:], mode='bilinear', align_corners=True).squeeze()
-        cams_neg = F.interpolate(cams_neg, size=image.shape[2:], mode='bilinear', align_corners=True).squeeze()
-        # print("mean, std, min, max of cams: ", cams.mean(), cams.std(), cams.min(), cams.max())
-        for j in range(len(output)):
-            cam = cams[j]
-            cam_pos = cams_pos[j]
-            cam_neg = cams_neg[j]
+        #     saliency.save(os.path.join(opt.output_dir, "saliency", os.path.basename(path[j])))
+        # # Visualize the Class Activation Map
+        # weighted_feat = feat #model.conv1x1(feat)
+        # cams = torch.sum(weighted_feat, dim=1, keepdim=True)
+        # cams_pos = F.relu(cams)
+        # cams_neg = F.relu(-cams)
+        # # print("cams.shape", cams.shape)
+        # cams = F.interpolate(cams, size=image.shape[2:], mode='bilinear', align_corners=True).squeeze()
+        # cams_pos = F.interpolate(cams_pos, size=image.shape[2:], mode='bilinear', align_corners=True).squeeze()
+        # cams_neg = F.interpolate(cams_neg, size=image.shape[2:], mode='bilinear', align_corners=True).squeeze()
+        # # print("mean, std, min, max of cams: ", cams.mean(), cams.std(), cams.min(), cams.max())
+        # for j in range(len(output)):
+        #     cam = cams[j]
+        #     cam_pos = cams_pos[j]
+        #     cam_neg = cams_neg[j]
 
-            cam = (cam - cam.min()) / (cam.max() - cam.min())
-            cam = cam.cpu().detach().numpy()
-            cam_pos = (cam_pos - cam_pos.min()) / (cam_pos.max() - cam_pos.min())
-            cam_pos = cam_pos.cpu().detach().numpy()
-            cam_neg = (cam_neg - cam_neg.min()) / (cam_neg.max() - cam_neg.min())
-            cam_neg = cam_neg.cpu().detach().numpy()
+        #     cam = (cam - cam.min()) / (cam.max() - cam.min())
+        #     cam = cam.cpu().detach().numpy()
+        #     cam_pos = (cam_pos - cam_pos.min()) / (cam_pos.max() - cam_pos.min())
+        #     cam_pos = cam_pos.cpu().detach().numpy()
+        #     cam_neg = (cam_neg - cam_neg.min()) / (cam_neg.max() - cam_neg.min())
+        #     cam_neg = cam_neg.cpu().detach().numpy()
 
-            img = image[j].cpu().detach().numpy().transpose(1, 2, 0) * 0.5 + 0.5
+        #     img = image[j].cpu().detach().numpy().transpose(1, 2, 0) * 0.5 + 0.5
             
-            cam_rgb = show_cam_on_image(img, cam, use_rgb=True)
-            # cam_rgb = img * cam.reshape(cam.shape[0], cam.shape[1], 1)
-            cam_pos = img * cam_pos.reshape(cam_pos.shape[0], cam_pos.shape[1], 1)
-            cam_neg = img * cam_neg.reshape(cam_neg.shape[0], cam_neg.shape[1], 1)
+        #     cam_rgb = show_cam_on_image(img, cam, use_rgb=True)
+        #     # cam_rgb = img * cam.reshape(cam.shape[0], cam.shape[1], 1)
+        #     cam_pos = img * cam_pos.reshape(cam_pos.shape[0], cam_pos.shape[1], 1)
+        #     cam_neg = img * cam_neg.reshape(cam_neg.shape[0], cam_neg.shape[1], 1)
 
-            cam_rgb = (cam_rgb * 255).astype(np.uint8)
-            cam_rgb = Image.fromarray(cam_rgb)
-            cam_rgb.save(os.path.join(opt.output_dir, "cam-rgb", os.path.basename(path[j])))
-            print("mean, std, min, max of cam: ", cam.mean(), cam.std(), cam.min(), cam.max())
+        #     cam_rgb = (cam_rgb * 255).astype(np.uint8)
+        #     cam_rgb = Image.fromarray(cam_rgb)
+        #     cam_rgb.save(os.path.join(opt.output_dir, "cam-rgb", os.path.basename(path[j])))
+        #     print("mean, std, min, max of cam: ", cam.mean(), cam.std(), cam.min(), cam.max())
 
-            cam_pos = (cam_pos * 255).astype(np.uint8)
-            cam_pos = Image.fromarray(cam_pos)
-            cam_pos.save(os.path.join(opt.output_dir, "cam-pos", os.path.basename(path[j])))
+        #     cam_pos = (cam_pos * 255).astype(np.uint8)
+        #     cam_pos = Image.fromarray(cam_pos)
+        #     cam_pos.save(os.path.join(opt.output_dir, "cam-pos", os.path.basename(path[j])))
 
-            cam_neg = (cam_neg * 255).astype(np.uint8)
-            cam_neg = Image.fromarray(cam_neg)
-            cam_neg.save(os.path.join(opt.output_dir, "cam-neg", os.path.basename(path[j])))
+        #     cam_neg = (cam_neg * 255).astype(np.uint8)
+        #     cam_neg = Image.fromarray(cam_neg)
+        #     cam_neg.save(os.path.join(opt.output_dir, "cam-neg", os.path.basename(path[j])))
 
-            cam = (cam*255).astype(np.uint8)
-            cam_img = Image.fromarray(cam).convert('L')
-            cam_img.save(os.path.join(opt.output_dir, "cam", os.path.basename(path[j])))
+        #     cam = (cam*255).astype(np.uint8)
+        #     cam_img = Image.fromarray(cam).convert('L')
+        #     cam_img.save(os.path.join(opt.output_dir, "cam", os.path.basename(path[j])))
 
 
         # Visualize the Grad-CAM
@@ -146,29 +139,29 @@ def test(model, test_loader, opt):
             print ("top_k, bottom_k: ", top_k, bottom_k)
             print("gray cam shape: ", grayscale_cam.shape)
             print("Boolean", grayscale_cam .min())
-            grayscale_cam_pos = torch.maximum(top_k.min(), grayscale_cam)
-            grayscale_cam_neg = torch.minimum(bottom_k.max(), grayscale_cam)
+            grayscale_cam_top = torch.maximum(top_k.min(), grayscale_cam)
+            grayscale_cam_bot = torch.minimum(bottom_k.max(), grayscale_cam)
 
             # print("grayscale_cam_pos.shape", grayscale_cam_pos.shape, "grayscale_cam_neg.shape", grayscale_cam_neg.shape)
         
-            grayscale_cam_neg = utils.normalize(grayscale_cam_neg).cpu().detach().numpy()
-            grayscale_cam_pos = utils.normalize(grayscale_cam_pos).cpu().detach().numpy()
+            grayscale_cam_bot = utils.normalize(grayscale_cam_bot).cpu().detach().numpy()
+            grayscale_cam_top = utils.normalize(grayscale_cam_top).cpu().detach().numpy()
             grayscale_cam = utils.normalize(grayscale_cam).cpu().detach().numpy()
             
             img = (image[j]*0.5+0.5).detach().cpu().numpy().transpose(1,2,0)
-            visualization = show_cam_on_image(img, grayscale_cam_pos, use_rgb=True)
+            visualization = show_cam_on_image(img, grayscale_cam_top, use_rgb=True)
             # Save the Grad-CAM
             visualization = Image.fromarray(visualization)
-            visualization.save(os.path.join(opt.output_dir, "gradcam-pos", os.path.basename(path[j]))) 
+            visualization.save(os.path.join(opt.output_dir, "grad_top", os.path.basename(path[j]))) 
 
             gradcam_img = (grayscale_cam*255).astype(np.uint8)
             print(f"gradcam_img.mean(): {gradcam_img.mean().item()}, gradcam_img.std(): {gradcam_img.std().item()}, gradcam_img.min(): {gradcam_img.min().item()}, gradcam_img.max(): {gradcam_img.max().item()}")
             gradcam_img = Image.fromarray(gradcam_img).convert('L')
-            gradcam_img.save(os.path.join(opt.output_dir, "gradcam", os.path.basename(path[j])))
+            gradcam_img.save(os.path.join(opt.output_dir, "neg_map", os.path.basename(path[j])))
 
-            visualization = show_cam_on_image(img, grayscale_cam_neg, use_rgb=True)
+            visualization = show_cam_on_image(img, grayscale_cam_bot, use_rgb=True)
             visualization = Image.fromarray(visualization)
-            visualization.save(os.path.join(opt.output_dir, "gradcam-neg", os.path.basename(path[j])))
+            visualization.save(os.path.join(opt.output_dir, "grad_bot", os.path.basename(path[j])))
         # for j in range(len(output)):
             
         print(i)
@@ -179,8 +172,8 @@ if __name__ == '__main__':
     opt = get_opt()
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu_ids
     # Define model
-    # model = ResNet18()
-    model = resnext50_32x4d()
+    model = ResNet18()
+    # model = resnext50_32x4d()
     # Load checkpoint
     model.load_state_dict(torch.load(opt.ckpt))
     # Define dataloader
