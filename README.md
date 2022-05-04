@@ -14,3 +14,6 @@ The results are saved in `./output/your_root/output.txt`.
 ![Untitled](./attractiveness/assets/top.jpg)
 ### Images with the lowest attractiveness scores
 ![Untitled](./attractiveness/assets/bottom.jpg)
+
+## run_test
+Call run_test() in run.py.
