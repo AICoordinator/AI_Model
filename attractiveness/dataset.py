@@ -65,10 +65,11 @@ class ImageDatasetTest(torch.utils.data.Dataset):
         image_path = self.image_paths[index]
         image_name = os.path.basename(image_path)
         image = Image.open(image_path)
+        image_big = transforms.ToTensor()(image)
         image = self.transform(image)
         # mask = Image.open(os.path.join(self.mask_dir, image_name))
         # mask = self.transform_mask(mask)
-        return image, image_path#, mask
+        return image, image_path, image_big#, mask
     def __len__(self):
         return len(self.image_paths)
 

@@ -49,7 +49,7 @@ def test(model, test_loader, output_dir):
     model.eval()
     model.cuda()
 
-    for i, (image, path) in enumerate(test_loader):
+    for i, (image, path, image_big) in enumerate(test_loader):
         image = image.cuda()
         image.requires_grad_()
 
@@ -65,7 +65,7 @@ def test(model, test_loader, output_dir):
 
         
 
-        grayscale_cams = F.interpolate(grayscale_cams, size=image.shape[2:], mode='bicubic', align_corners=True).squeeze()
+        grayscale_cams = F.interpolate(grayscale_cams, size=image_big.shape[2:], mode='bicubic', align_corners=True).squeeze()
         for j in range(len(output)):
             # Select top/bottom 10% pixels
             grayscale_cam = grayscale_cams[j]
@@ -85,7 +85,7 @@ def test(model, test_loader, output_dir):
             grayscale_cam_top = utils.normalize(grayscale_cam_top).cpu().detach().numpy()
             grayscale_cam = utils.normalize(grayscale_cam).cpu().detach().numpy()
             
-            img = (image[j]*0.5+0.5).detach().cpu().numpy().transpose(1,2,0)
+            img = (image_big[j]).detach().numpy().transpose(1,2,0)
             visualization = show_cam_on_image(img, grayscale_cam_top, use_rgb=True)
             # Save the Grad-CAM
             visualization = Image.fromarray(visualization)
