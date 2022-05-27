@@ -26,11 +26,27 @@ from PIL import Image
     
 #     opt = parser.parse_args()
 #     return opt
+def crop_face(img):
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    if len(faces) == 0:
+        return img
+    margin = 100
+    for (x,y,w,h) in faces:
+        x = max(0, x - margin)
+        y = max(0, y - margin)
+        w = min(w + 2 * margin, img.shape[1] - x)
+        h = min(h + 2 * margin, img.shape[0] - y)
+        img = img[y:y+h, x:x+w]
+    return img
+
 
 def extract_images(video_path, save_path, num_images=10, interval = 30):
     # Load the video
     vidcap = cv2.VideoCapture(video_path)
     success, image = vidcap.read()
+    image = crop_face(image)
     count = 0
     success = True
     if not os.path.exists(save_path):
