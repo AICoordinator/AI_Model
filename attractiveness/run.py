@@ -32,7 +32,7 @@ def crop_face(img):
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
     if len(faces) == 0:
         return img
-    margin = 100
+    margin = 0
     for (x,y,w,h) in faces:
         x = max(0, x - margin)
         y = max(0, y - margin)
