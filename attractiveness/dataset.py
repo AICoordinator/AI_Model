@@ -45,10 +45,11 @@ class ImageDatasetTest(torch.utils.data.Dataset):
     def __init__(self, data_dir):
         self.data_dir = data_dir
         # self.mask_dir = "/home/sangyunlee/dataset/SCUT-FBP5500_v2/mask"
-        self.transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
-                        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        self.transform512 = transforms.Compose([transforms.Resize((512, 512)), transforms.ToTensor(),
+                        transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
                                                                                   ])
-        self.transform_mask =  transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+        self.transform224 =  transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(),
+                        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
                                                                                   ])
         self.image_paths = []
         
@@ -65,8 +66,8 @@ class ImageDatasetTest(torch.utils.data.Dataset):
         image_path = self.image_paths[index]
         image_name = os.path.basename(image_path)
         image = Image.open(image_path)
-        image_big = transforms.ToTensor()(image)
-        image = self.transform(image)
+        image_big = self.transform512(image)
+        image = self.transform224(image)
         # mask = Image.open(os.path.join(self.mask_dir, image_name))
         # mask = self.transform_mask(mask)
         return image, image_path, image_big#, mask
