@@ -345,7 +345,7 @@ if __name__ == '__main__':
              num_images = 10,
              interval = 30,
              ckpt = "/home/sangyunlee/AI_Model/attractiveness/checkpoints/mask-reg/best_model.pth",
-             ckpt_mask = "/home/sangyunlee/face-parsing.PyTorch/res/cp/79999_iter.pth",
+             ckpt_mask = "/home/sangyunlee/face-parsing.PyTorch/res/cp/79999_iter.pth", # https://drive.google.com/open?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812
              output_dir = "/home/sangyunlee/AI_Model/attractiveness/output/test",
              batch_size = 16,
              gpu_ids = "0")
